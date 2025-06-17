@@ -2,98 +2,108 @@
 import pytest
 import pandas as pd
 import plotly.graph_objects as go
-from definitions_fd1d59f8f1ed4c6e8aa2ec51286fb799 import generate_scatter_plot
+from unittest.mock import MagicMock
+from definitions_eb57b65b3672426e8091b5232f785c0d import generate_scatter_plot
+
 
 @pytest.fixture
-def sample_data():
-    data = pd.DataFrame({
-        'x_column': [1, 2, 3, 4, 5],
-        'y_column': [2, 4, 1, 3, 5],
-        'z_column': [5, 4, 3, 2, 1]
-    })
-    return data
+def sample_dataframe():
+    data = {
+        'x_data': [1, 2, 3, 4, 5],
+        'y_data': [2, 4, 1, 3, 5],
+        'other_column': ['A', 'B', 'C', 'D', 'E']
+    }
+    return pd.DataFrame(data)
 
-def test_generate_scatter_plot_valid_data(sample_data):
-    fig = generate_scatter_plot(sample_data, 'x_column', 'y_column')
-    assert isinstance(fig, go.Figure)
-    assert fig.data[0]['type'] == 'scatter'
-    assert fig.data[0]['x'].tolist() == sample_data['x_column'].tolist()
-    assert fig.data[0]['y'].tolist() == sample_data['y_column'].tolist()
-    assert fig.layout.xaxis.title.text == 'x_column'
-    assert fig.layout.yaxis.title.text == 'y_column'
 
-def test_generate_scatter_plot_different_columns(sample_data):
-    fig = generate_scatter_plot(sample_data, 'z_column', 'x_column')
+def test_generate_scatter_plot_valid_input(sample_dataframe):
+    fig = generate_scatter_plot(sample_dataframe, 'x_data', 'y_data')
     assert isinstance(fig, go.Figure)
+    assert len(fig.data) == 1
     assert fig.data[0]['type'] == 'scatter'
-    assert fig.data[0]['x'].tolist() == sample_data['z_column'].tolist()
-    assert fig.data[0]['y'].tolist() == sample_data['x_column'].tolist()
-    assert fig.layout.xaxis.title.text == 'z_column'
-    assert fig.layout.yaxis.title.text == 'x_column'
+    assert fig.data[0]['x'].tolist() == sample_dataframe['x_data'].tolist()
+    assert fig.data[0]['y'].tolist() == sample_dataframe['y_data'].tolist()
+    assert fig.layout.xaxis.title.text == 'x_data'
+    assert fig.layout.yaxis.title.text == 'y_data'
+
 
 def test_generate_scatter_plot_empty_dataframe():
-    empty_data = pd.DataFrame()
-    with pytest.raises(KeyError):
-        generate_scatter_plot(empty_data, 'x_column', 'y_column')
+    df = pd.DataFrame()
+    fig = generate_scatter_plot(df, 'x', 'y') # Should not throw error and return a figure with no data.
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == 0
 
-def test_generate_scatter_plot_missing_column(sample_data):
-    with pytest.raises(KeyError):
-        generate_scatter_plot(sample_data, 'nonexistent_column', 'y_column')
 
-    with pytest.raises(KeyError):
-        generate_scatter_plot(sample_data, 'x_column', 'nonexistent_column')
-
-def test_generate_scatter_plot_non_numeric_data():
-    data = pd.DataFrame({
-        'x_column': ['a', 'b', 'c', 'd', 'e'],
-        'y_column': ['f', 'g', 'h', 'i', 'j']
-    })
+def test_generate_scatter_plot_non_numeric_data(sample_dataframe):
+    # Test when x or y axis data are not numeric.  Should either convert or raise ValueError
 
     with pytest.raises(TypeError):
-       generate_scatter_plot(data, 'x_column', 'y_column')
+        generate_scatter_plot(sample_dataframe, 'other_column', 'y_data') # Expected TypeError
 
-def test_generate_scatter_plot_mixed_data(sample_data):
-    mixed_data = sample_data.copy()
-    mixed_data['x_column'] = mixed_data['x_column'].astype(str)
 
-    with pytest.raises(TypeError):
-        generate_scatter_plot(mixed_data, 'x_column', 'y_column')
+def test_generate_scatter_plot_missing_columns(sample_dataframe):
+    # Test when x_axis or y_axis is not present in df
 
-def test_generate_scatter_plot_inf_values():
-    data = pd.DataFrame({
-        'x_column': [1, float('inf'), 3, 4, 5],
-        'y_column': [2, 4, 1, 3, 5],
-    })
-    fig = generate_scatter_plot(data, 'x_column', 'y_column')
+    with pytest.raises(KeyError):
+        generate_scatter_plot(sample_dataframe, 'nonexistent_column', 'y_data')
+
+    with pytest.raises(KeyError):
+        generate_scatter_plot(sample_dataframe, 'x_data', 'nonexistent_column')
+
+
+def test_generate_scatter_plot_nan_values(sample_dataframe):
+    sample_dataframe.loc[0, 'x_data'] = float('nan')
+    sample_dataframe.loc[1, 'y_data'] = float('nan')
+    fig = generate_scatter_plot(sample_dataframe, 'x_data', 'y_data')
     assert isinstance(fig, go.Figure)
+    # Plotly should handle NaNs gracefully, so check plot is still generated
+    assert len(fig.data) == 1
 
-def test_generate_scatter_plot_nan_values():
-    data = pd.DataFrame({
-        'x_column': [1, float('nan'), 3, 4, 5],
-        'y_column': [2, 4, 1, 3, 5],
-    })
-    fig = generate_scatter_plot(data, 'x_column', 'y_column')
-    assert isinstance(fig, go.Figure)
 
-def test_generate_scatter_plot_x_and_y_same_column(sample_data):
-    fig = generate_scatter_plot(sample_data, 'x_column', 'x_column')
+def test_generate_scatter_plot_inf_values(sample_dataframe):
+    sample_dataframe.loc[0, 'x_data'] = float('inf')
+    sample_dataframe.loc[1, 'y_data'] = float('-inf')
+    fig = generate_scatter_plot(sample_dataframe, 'x_data', 'y_data')
     assert isinstance(fig, go.Figure)
-    assert fig.data[0]['x'].tolist() == sample_data['x_column'].tolist()
-    assert fig.data[0]['y'].tolist() == sample_data['x_column'].tolist()
+    # Plotly should handle inf gracefully or raise an error during conversion.
+    assert len(fig.data) == 1
 
-def test_generate_scatter_plot_large_numbers():
-    data = pd.DataFrame({
-        'x_column': [1e10, 2e10, 3e10],
-        'y_column': [4e10, 5e10, 6e10]
-    })
-    fig = generate_scatter_plot(data, 'x_column', 'y_column')
-    assert isinstance(fig, go.Figure)
 
-def test_generate_scatter_plot_negative_numbers():
-    data = pd.DataFrame({
-        'x_column': [-1, -2, -3],
-        'y_column': [-4, -5, -6]
-    })
-    fig = generate_scatter_plot(data, 'x_column', 'y_column')
+def test_generate_scatter_plot_xaxis_and_yaxis_same(sample_dataframe):
+    fig = generate_scatter_plot(sample_dataframe, 'x_data', 'x_data')
     assert isinstance(fig, go.Figure)
+    assert len(fig.data) == 1
+    assert fig.data[0]['type'] == 'scatter'
+    assert fig.data[0]['x'].tolist() == sample_dataframe['x_data'].tolist()
+    assert fig.data[0]['y'].tolist() == sample_dataframe['x_data'].tolist()
+    assert fig.layout.xaxis.title.text == 'x_data'
+    assert fig.layout.yaxis.title.text == 'x_data'
+
+
+def test_generate_scatter_plot_large_numbers(sample_dataframe):
+    sample_dataframe['x_data'] = sample_dataframe['x_data'] * 1e10
+    sample_dataframe['y_data'] = sample_dataframe['y_data'] * 1e10
+
+    fig = generate_scatter_plot(sample_dataframe, 'x_data', 'y_data')
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == 1
+    assert fig.data[0]['type'] == 'scatter'
+    assert fig.data[0]['x'].tolist() == sample_dataframe['x_data'].tolist()
+    assert fig.data[0]['y'].tolist() == sample_dataframe['y_data'].tolist()
+    assert fig.layout.xaxis.title.text == 'x_data'
+    assert fig.layout.yaxis.title.text == 'y_data'
+
+
+def test_generate_scatter_plot_negative_numbers(sample_dataframe):
+    sample_dataframe['x_data'] = -sample_dataframe['x_data']
+    sample_dataframe['y_data'] = -sample_dataframe['y_data']
+
+    fig = generate_scatter_plot(sample_dataframe, 'x_data', 'y_data')
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == 1
+    assert fig.data[0]['type'] == 'scatter'
+    assert fig.data[0]['x'].tolist() == sample_dataframe['x_data'].tolist()
+    assert fig.data[0]['y'].tolist() == sample_dataframe['y_data'].tolist()
+    assert fig.layout.xaxis.title.text == 'x_data'
+    assert fig.layout.yaxis.title.text == 'y_data'
 """
