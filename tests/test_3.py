@@ -2,94 +2,116 @@
 import pytest
 import pandas as pd
 import plotly.graph_objects as go
-from definitions_f68a64c556c14824b2c1d1f06d84077f import generate_line_chart
+from definitions_8c95e11b921e44869b6cc8ac42a6b8de import generate_line_chart
 
-# Mock data for testing purposes
-@pytest.fixture
-def mock_data():
-    data = {
-        'Date': pd.to_datetime(['2023-01-01', '2023-01-08', '2023-01-15', '2023-01-22', '2023-01-29']),
-        'Average Return': [0.01, 0.02, 0.015, 0.025, 0.022],
-        'Volatility': [0.05, 0.06, 0.055, 0.065, 0.062],
-        'Sharpe Ratio': [0.2, 0.3, 0.25, 0.35, 0.32]
-    }
-    return pd.DataFrame(data)
 
-# Test case 1: Check if the function returns a Plotly figure
-def test_generate_line_chart_returns_figure(mock_data):
-    fig = generate_line_chart(mock_data)
+def test_generate_line_chart_empty_dataframe():
+    """
+    Test case: Input is an empty DataFrame.
+    Expected behavior: Returns an empty figure.
+    """
+    empty_df = pd.DataFrame()
+    fig = generate_line_chart(empty_df)
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == 0
+
+
+def test_generate_line_chart_missing_columns():
+    """
+    Test case: Input DataFrame is missing required columns (e.g., 'average_returns', 'volatility', 'sharpe_ratio').
+    Expected behavior: Raises a ValueError or KeyError.
+    """
+    incomplete_df = pd.DataFrame({'col1': [1, 2], 'col2': [3, 4]})
+    with pytest.raises((KeyError, ValueError)):
+        generate_line_chart(incomplete_df)
+
+
+def test_generate_line_chart_valid_data():
+    """
+    Test case: Input DataFrame contains valid data for average returns, volatility, and Sharpe ratios.
+    Expected behavior: Returns a Plotly figure with line plots for each metric.  Check that traces exist and have appropriate names.
+    """
+    data = {'average_returns': [0.1, 0.2, 0.3],
+            'volatility': [0.05, 0.06, 0.07],
+            'sharpe_ratio': [2, 3, 4]}
+    df = pd.DataFrame(data)
+
+    fig = generate_line_chart(df)
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == 3  # Expect 3 traces: average_returns, volatility, sharpe_ratio
+    trace_names = [trace.name for trace in fig.data]
+    assert 'average_returns' in trace_names
+    assert 'volatility' in trace_names
+    assert 'sharpe_ratio' in trace_names
+
+
+def test_generate_line_chart_non_numeric_data():
+    """
+    Test case: Input DataFrame contains non-numeric data in the columns for average returns, volatility, and Sharpe ratios.
+    Expected behavior: Raises a TypeError or ValueError.
+    """
+    data = {'average_returns': ['a', 'b', 'c'],
+            'volatility': ['d', 'e', 'f'],
+            'sharpe_ratio': ['g', 'h', 'i']}
+    df = pd.DataFrame(data)
+
+    with pytest.raises((TypeError, ValueError)):
+        generate_line_chart(df)
+
+
+def test_generate_line_chart_with_time_index():
+    """
+    Test case: Input DataFrame has a time-based index. Ensure x-axis reflects this time data.
+    Expected behavior:  Plotly figure should display the time index correctly on the x-axis.
+    """
+    dates = pd.to_datetime(['2023-01-01', '2023-01-02', '2023-01-03'])
+    data = {'average_returns': [0.1, 0.2, 0.3],
+            'volatility': [0.05, 0.06, 0.07],
+            'sharpe_ratio': [2, 3, 4]}
+    df = pd.DataFrame(data, index=dates)
+
+    fig = generate_line_chart(df)
+    assert isinstance(fig, go.Figure)
+    # Check that x-axis contains datetime values (basic check, more robust validation would involve inspecting the actual x-axis data)
+    assert all(isinstance(x, str) for x in fig.data[0].x)
+
+
+def test_generate_line_chart_all_zero_values():
+    """
+    Test case: Input contains all zero values.
+    Expected behavior: Returns a Plotly figure without errors. Y-axis should reflect zero values.
+    """
+    data = {'average_returns': [0, 0, 0],
+            'volatility': [0, 0, 0],
+            'sharpe_ratio': [0, 0, 0]}
+    df = pd.DataFrame(data)
+    fig = generate_line_chart(df)
     assert isinstance(fig, go.Figure)
 
-# Test case 2: Check if the figure contains the correct number of traces (Average Return, Volatility, Sharpe Ratio)
-def test_generate_line_chart_number_of_traces(mock_data):
-    fig = generate_line_chart(mock_data)
-    assert len(fig.data) == 3
 
-# Test case 3: Check if the x-axis is correctly set to 'Date'
-def test_generate_line_chart_xaxis(mock_data):
-    fig = generate_line_chart(mock_data)
-    for trace in fig.data:
-        assert trace.x.tolist() == mock_data['Date'].tolist()
-
-# Test case 4: Check if the y-axis of each trace corresponds to the correct column in the DataFrame
-def test_generate_line_chart_yaxis(mock_data):
-    fig = generate_line_chart(mock_data)
-    y_values = [trace.y.tolist() for trace in fig.data]
-    expected_y_values = [
-        mock_data['Average Return'].tolist(),
-        mock_data['Volatility'].tolist(),
-        mock_data['Sharpe Ratio'].tolist()
-    ]
-    assert y_values == expected_y_values
-
-# Test case 5: Check if the chart title is set correctly.  This is now determined within the function.
-def test_generate_line_chart_title(mock_data):
-    fig = generate_line_chart(mock_data)
-    assert fig.layout.title.text == 'Performance Metrics Over Time'
+def test_generate_line_chart_inf_values():
+    """
+    Test case: Input contains infinite Sharpe ratio values.
+    Expected behavior: Handles infinite values gracefully. Plot should display other line plots without breaking.
+    """
+    data = {'average_returns': [0.1, 0.2, 0.3],
+            'volatility': [0.05, 0.06, 0.07],
+            'sharpe_ratio': [float('inf'), 3, 4]}
+    df = pd.DataFrame(data)
+    fig = generate_line_chart(df)
+    assert isinstance(fig, go.Figure)
+    # Ideally add logic here to check that the plot doesn't completely break and other series render.
 
 
-# Test case 6: Test with an empty DataFrame
-def test_generate_line_chart_empty_dataframe():
-    empty_data = pd.DataFrame()
-    with pytest.raises(ValueError) as excinfo:
-        generate_line_chart(empty_data)
-    assert "Input DataFrame is empty." in str(excinfo.value)
-
-# Test case 7: Test with a DataFrame missing required columns ('Date', 'Average Return', 'Volatility', 'Sharpe Ratio')
-def test_generate_line_chart_missing_columns():
-    missing_data = pd.DataFrame({'Date': pd.to_datetime(['2023-01-01']), 'Average Return': [0.01]})
-    with pytest.raises(KeyError) as excinfo:
-        generate_line_chart(missing_data)
-    assert "Required columns ('Volatility', 'Sharpe Ratio') are missing." in str(excinfo.value)
-
-# Test case 8: Check if date column is datetime
-def test_generate_line_chart_date_format(mock_data):
-    fig = generate_line_chart(mock_data)
-    for trace in fig.data:
-        assert all(isinstance(date, pd.Timestamp) for date in trace.x)
-
-# Test case 9: Numerical values in return, vol, sharpe ratio.
-
-def test_generate_line_chart_numerical_values(mock_data):
-
-    fig = generate_line_chart(mock_data)
-    for trace in fig.data:
-      assert all(isinstance(value, (int, float)) for value in trace.y)
-
-# Test case 10: Check if it handles NaN values correctly in the data by dropping them
 def test_generate_line_chart_nan_values():
-    data_with_nan = pd.DataFrame({
-        'Date': pd.to_datetime(['2023-01-01', '2023-01-08', '2023-01-15']),
-        'Average Return': [0.01, float('nan'), 0.015],
-        'Volatility': [0.05, 0.06, float('nan')],
-        'Sharpe Ratio': [0.2, float('nan'), 0.25]
-    })
-    fig = generate_line_chart(data_with_nan)
-
-    # Get y values from chart
-    y_values = [trace.y.tolist() for trace in fig.data]
-
-    # Validate they don't contain NaN.
-    assert all(float('nan') not in sublist for sublist in y_values)
-
+    """
+    Test case: Input contains NaN values.
+    Expected behavior: Handles NaN values, either skips points or replaces them with a default value
+    """
+    data = {'average_returns': [0.1, float('nan'), 0.3],
+            'volatility': [0.05, 0.06, 0.07],
+            'sharpe_ratio': [2, 3, 4]}
+    df = pd.DataFrame(data)
+    fig = generate_line_chart(df)
+    assert isinstance(fig, go.Figure)
 """
