@@ -1,125 +1,79 @@
 """
 import pytest
 import pandas as pd
-from definitions_c96e27b88f91406489526ca64767b193 import compare_with_benchmark
+from definitions_cac95777b35d4caca68c0d1591a5d30e import compare_with_benchmark
 
-# Mock data and setup for tests
+# Mocking data for testing purposes
 @pytest.fixture
 def mock_pair_portfolio_returns():
-    return pd.Series([0.01, 0.02, -0.01, 0.03], index=[1, 2, 3, 4])
+    return pd.Series([0.01, 0.02, -0.01, 0.03], index=pd.to_datetime(['2023-01-01', '2023-01-02', '2023-01-03', '2023-01-04']))
 
 @pytest.fixture
 def mock_benchmark_returns():
-    return pd.Series([0.005, 0.01, -0.005, 0.015], index=[1, 2, 3, 4])
+    return pd.Series([0.005, 0.015, -0.005, 0.025], index=pd.to_datetime(['2023-01-01', '2023-01-02', '2023-01-03', '2023-01-04']))
+
 
 def test_compare_with_benchmark_valid_input(mock_pair_portfolio_returns, mocker):
-    # Mock a benchmark strategy function
-    mock_benchmark_strategy = mocker.MagicMock(return_value=mock_pair_portfolio_returns)
-    mocker.patch('definitions_c96e27b88f91406489526ca64767b193.linear_weights', mock_benchmark_strategy)
+    # Mock a benchmark strategy function that returns sample benchmark returns
+    mock_benchmark_strategy_returns = mock_benchmark_returns
+    mocker.patch('definitions_cac95777b35d4caca68c0d1591a5d30e.compare_with_benchmark', return_value = pd.DataFrame({'pair_portfolio': mock_pair_portfolio_returns, 'benchmark': mock_benchmark_strategy_returns}))
 
-    # Define benchmark parameters
-    benchmark_parameters = {}
-
-    # Call the function
-    result = compare_with_benchmark(mock_pair_portfolio_returns, 'linear_weights', benchmark_parameters)
-
-    # Assert the function returns a DataFrame
+    benchmark_parameters = {'parameter1': 1, 'parameter2': 2}
+    result = compare_with_benchmark(mock_pair_portfolio_returns, 'test_strategy', benchmark_parameters)
     assert isinstance(result, pd.DataFrame)
+    assert 'pair_portfolio' in result.columns
+    assert 'benchmark' in result.columns
+    assert len(result) == len(mock_pair_portfolio_returns)
 
-    # Assert the DataFrame contains the expected columns
-    assert 'Pair Portfolio' in result.columns
-    assert 'Benchmark' in result.columns
-
-    # Assert the DataFrame contains the portfolio returns
-    assert result['Pair Portfolio'].equals(mock_pair_portfolio_returns)
-
-    # Assert the benchmark strategy was called with the correct parameters
-    mock_benchmark_strategy.assert_called_once_with(benchmark_parameters)
-
-def test_compare_with_benchmark_different_index(mocker):
-    pair_portfolio_returns = pd.Series([0.01, 0.02], index=[1, 2])
-    benchmark_returns = pd.Series([0.005, 0.01, -0.005], index=[1, 2, 3])
-
-    mock_benchmark_strategy = mocker.MagicMock(return_value=benchmark_returns)
-    mocker.patch('definitions_c96e27b88f91406489526ca64767b193.linear_weights', mock_benchmark_strategy)
-
-    benchmark_parameters = {}
-
-    result = compare_with_benchmark(pair_portfolio_returns, 'linear_weights', benchmark_parameters)
-    assert isinstance(result, pd.DataFrame)
-    assert len(result) == 2  # Only the common indices should be present
-
-def test_compare_with_benchmark_empty_portfolio_returns(mocker):
+def test_compare_with_benchmark_empty_portfolio_returns():
     pair_portfolio_returns = pd.Series([])
-    benchmark_returns = pd.Series([0.005, 0.01, -0.005], index=[1, 2, 3])
+    benchmark_parameters = {'parameter1': 1, 'parameter2': 2}
+    with pytest.raises(ValueError):
+        compare_with_benchmark(pair_portfolio_returns, 'test_strategy', benchmark_parameters)
 
-    mock_benchmark_strategy = mocker.MagicMock(return_value=benchmark_returns)
-    mocker.patch('definitions_c96e27b88f91406489526ca64767b193.linear_weights', mock_benchmark_strategy)
+def test_compare_with_benchmark_invalid_benchmark_strategy(mock_pair_portfolio_returns):
+    benchmark_parameters = {'parameter1': 1, 'parameter2': 2}
+    with pytest.raises(ValueError):
+        compare_with_benchmark(mock_pair_portfolio_returns, None, benchmark_parameters)
 
-    benchmark_parameters = {}
+def test_compare_with_benchmark_benchmark_returns_different_length(mock_pair_portfolio_returns, mocker):
+    benchmark_parameters = {'parameter1': 1, 'parameter2': 2}
+    benchmark_returns = pd.Series([0.01, 0.02], index=pd.to_datetime(['2023-01-01', '2023-01-02']))
+    mocker.patch('definitions_cac95777b35d4caca68c0d1591a5d30e.compare_with_benchmark', return_value = pd.DataFrame({'pair_portfolio': mock_pair_portfolio_returns, 'benchmark': benchmark_returns}))
+    with pytest.raises(ValueError):
+        compare_with_benchmark(mock_pair_portfolio_returns, 'test_strategy', benchmark_parameters)
 
-    result = compare_with_benchmark(pair_portfolio_returns, 'linear_weights', benchmark_parameters)
+def test_compare_with_benchmark_benchmark_returns_different_index(mock_pair_portfolio_returns, mocker):
+    benchmark_parameters = {'parameter1': 1, 'parameter2': 2}
+    benchmark_returns = pd.Series([0.01, 0.02,-0.01, 0.03], index=pd.to_datetime(['2023-01-01', '2023-01-02', '2023-01-03', '2023-01-05']))
+    mocker.patch('definitions_cac95777b35d4caca68c0d1591a5d30e.compare_with_benchmark', return_value = pd.DataFrame({'pair_portfolio': mock_pair_portfolio_returns, 'benchmark': benchmark_returns}))
+    with pytest.raises(ValueError):
+        compare_with_benchmark(mock_pair_portfolio_returns, 'test_strategy', benchmark_parameters)
+
+def test_compare_with_benchmark_returns_are_nan(mock_pair_portfolio_returns, mocker):
+
+    mock_benchmark_strategy_returns = pd.Series([float('nan'), 0.02, -0.01, 0.03], index=pd.to_datetime(['2023-01-01', '2023-01-02', '2023-01-03', '2023-01-04']))
+    mocker.patch('definitions_cac95777b35d4caca68c0d1591a5d30e.compare_with_benchmark', return_value = pd.DataFrame({'pair_portfolio': mock_pair_portfolio_returns, 'benchmark': mock_benchmark_strategy_returns}))
+
+    benchmark_parameters = {'parameter1': 1, 'parameter2': 2}
+    result = compare_with_benchmark(mock_pair_portfolio_returns, 'test_strategy', benchmark_parameters)
     assert isinstance(result, pd.DataFrame)
-    assert len(result) == 0
 
-def test_compare_with_benchmark_empty_benchmark_returns(mocker):
-    pair_portfolio_returns = pd.Series([0.01, 0.02], index=[1, 2])
-    benchmark_returns = pd.Series([])
+def test_compare_with_benchmark_portfolio_returns_are_nan(mocker):
+    mock_pair_portfolio_returns = pd.Series([float('nan'), 0.02, -0.01, 0.03], index=pd.to_datetime(['2023-01-01', '2023-01-02', '2023-01-03', '2023-01-04']))
+    mock_benchmark_strategy_returns =  pd.Series([0.005, 0.015, -0.005, 0.025], index=pd.to_datetime(['2023-01-01', '2023-01-02', '2023-01-03', '2023-01-04']))
+    mocker.patch('definitions_cac95777b35d4caca68c0d1591a5d30e.compare_with_benchmark', return_value = pd.DataFrame({'pair_portfolio': mock_pair_portfolio_returns, 'benchmark': mock_benchmark_strategy_returns}))
 
-    mock_benchmark_strategy = mocker.MagicMock(return_value=benchmark_returns)
-    mocker.patch('definitions_c96e27b88f91406489526ca64767b193.linear_weights', mock_benchmark_strategy)
-
-    benchmark_parameters = {}
-
-    result = compare_with_benchmark(pair_portfolio_returns, 'linear_weights', benchmark_parameters)
+    benchmark_parameters = {'parameter1': 1, 'parameter2': 2}
+    result = compare_with_benchmark(mock_pair_portfolio_returns, 'test_strategy', benchmark_parameters)
     assert isinstance(result, pd.DataFrame)
-    assert len(result) == 0
 
-def test_compare_with_benchmark_invalid_strategy_name(mock_pair_portfolio_returns):
-    benchmark_parameters = {}
+def test_compare_with_benchmark_portfolio_returns_are_inf(mocker):
+    mock_pair_portfolio_returns = pd.Series([float('inf'), 0.02, -0.01, 0.03], index=pd.to_datetime(['2023-01-01', '2023-01-02', '2023-01-03', '2023-01-04']))
+    mock_benchmark_strategy_returns =  pd.Series([0.005, 0.015, -0.005, 0.025], index=pd.to_datetime(['2023-01-01', '2023-01-02', '2023-01-03', '2023-01-04']))
+    mocker.patch('definitions_cac95777b35d4caca68c0d1591a5d30e.compare_with_benchmark', return_value = pd.DataFrame({'pair_portfolio': mock_pair_portfolio_returns, 'benchmark': mock_benchmark_strategy_returns}))
 
-    with pytest.raises(ValueError) as excinfo:
-        compare_with_benchmark(mock_pair_portfolio_returns, 'invalid_strategy', benchmark_parameters)
-    assert "Benchmark strategy 'invalid_strategy' not found" in str(excinfo.value)
-
-def test_compare_with_benchmark_no_parameters(mock_pair_portfolio_returns, mocker):
-
-    mock_benchmark_strategy = mocker.MagicMock(return_value=mock_pair_portfolio_returns)
-    mocker.patch('definitions_c96e27b88f91406489526ca64767b193.linear_weights', mock_benchmark_strategy)
-
-    # Call the function with no benchmark parameters
-    result = compare_with_benchmark(mock_pair_portfolio_returns, 'linear_weights', None)
-
+    benchmark_parameters = {'parameter1': 1, 'parameter2': 2}
+    result = compare_with_benchmark(mock_pair_portfolio_returns, 'test_strategy', benchmark_parameters)
     assert isinstance(result, pd.DataFrame)
-    assert 'Pair Portfolio' in result.columns
-    assert 'Benchmark' in result.columns
-    mock_benchmark_strategy.assert_called_once_with(None)
-
-def test_compare_with_benchmark_strategy_failure(mock_pair_portfolio_returns, mocker):
-    # Mock a benchmark strategy function that raises an exception
-    mock_benchmark_strategy = mocker.MagicMock(side_effect=ValueError("Benchmark failed"))
-    mocker.patch('definitions_c96e27b88f91406489526ca64767b193.linear_weights', mock_benchmark_strategy)
-
-    # Define benchmark parameters
-    benchmark_parameters = {}
-
-    # Call the function and assert that the exception is propagated
-    with pytest.raises(ValueError) as excinfo:
-        compare_with_benchmark(mock_pair_portfolio_returns, 'linear_weights', benchmark_parameters)
-    assert "Benchmark failed" in str(excinfo.value)
-
-def test_compare_with_benchmark_NaN_returns(mocker):
-    pair_portfolio_returns = pd.Series([0.01, float('NaN'), 0.02], index=[1, 2, 3])
-    benchmark_returns = pd.Series([0.005, 0.01, float('NaN')], index=[1, 2, 3])
-
-    mock_benchmark_strategy = mocker.MagicMock(return_value=benchmark_returns)
-    mocker.patch('definitions_c96e27b88f91406489526ca64767b193.linear_weights', mock_benchmark_strategy)
-
-    benchmark_parameters = {}
-
-    result = compare_with_benchmark(pair_portfolio_returns, 'linear_weights', benchmark_parameters)
-    assert isinstance(result, pd.DataFrame)
-    assert len(result) == 3
-    assert result['Pair Portfolio'].isna().sum() == 1
-    assert result['Benchmark'].isna().sum() == 1
 """
