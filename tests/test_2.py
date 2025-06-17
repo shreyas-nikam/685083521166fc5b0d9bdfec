@@ -1,90 +1,98 @@
+```python
 """
 import pytest
 import pandas as pd
 import numpy as np
-from definitions_2564fee84f3c4e8bad24a9b5daeef648 import calculate_sharpe_ratio
+from definitions_94d67dfa6f1e4a8fb689d6b4713c8e96 import calculate_sharpe_ratio
 
-def test_calculate_sharpe_ratio_positive_returns():
-    returns = pd.Series([0.10, 0.15, 0.20, 0.12, 0.08])
-    risk_free_rate = 0.05
-    expected_sharpe_ratio = (returns.mean() - risk_free_rate) / returns.std()
-    calculated_sharpe_ratio = calculate_sharpe_ratio(returns, risk_free_rate)
-    assert np.isclose(calculated_sharpe_ratio, expected_sharpe_ratio)
 
-def test_calculate_sharpe_ratio_negative_returns():
-    returns = pd.Series([-0.10, -0.15, -0.20, -0.12, -0.08])
-    risk_free_rate = 0.05
+def test_calculate_sharpe_ratio_typical():
+    returns = pd.Series([0.1, 0.2, -0.1, 0.05, 0.15])
+    risk_free_rate = 0.02
     expected_sharpe_ratio = (returns.mean() - risk_free_rate) / returns.std()
-    calculated_sharpe_ratio = calculate_sharpe_ratio(returns, risk_free_rate)
-    assert np.isclose(calculated_sharpe_ratio, expected_sharpe_ratio)
+    assert np.isclose(calculate_sharpe_ratio(returns, risk_free_rate), expected_sharpe_ratio)
+
+def test_calculate_sharpe_ratio_zero_std():
+    returns = pd.Series([0.1, 0.1, 0.1, 0.1])
+    risk_free_rate = 0.02
+    assert np.isinf(calculate_sharpe_ratio(returns, risk_free_rate))
+
+def test_calculate_sharpe_ratio_negative_std():
+    returns = pd.Series([-0.1, -0.1, -0.1, -0.1])
+    risk_free_rate = 0.02
+    assert np.isinf(calculate_sharpe_ratio(returns, risk_free_rate) * -1)
 
 def test_calculate_sharpe_ratio_zero_returns():
-    returns = pd.Series([0.0, 0.0, 0.0, 0.0, 0.0])
-    risk_free_rate = 0.05
-    expected_sharpe_ratio = (returns.mean() - risk_free_rate) / returns.std() if returns.std() > 0 else -np.inf
-    calculated_sharpe_ratio = calculate_sharpe_ratio(returns, risk_free_rate)
-    if np.isinf(expected_sharpe_ratio):
-        assert np.isinf(calculated_sharpe_ratio)
-    else:
-        assert np.isclose(calculated_sharpe_ratio, expected_sharpe_ratio)
-
-def test_calculate_sharpe_ratio_mixed_returns():
-    returns = pd.Series([0.10, -0.15, 0.20, -0.12, 0.08])
-    risk_free_rate = 0.05
+    returns = pd.Series([0, 0, 0, 0, 0])
+    risk_free_rate = 0.02
     expected_sharpe_ratio = (returns.mean() - risk_free_rate) / returns.std()
-    calculated_sharpe_ratio = calculate_sharpe_ratio(returns, risk_free_rate)
-    assert np.isclose(calculated_sharpe_ratio, expected_sharpe_ratio)
+    assert np.isnan(calculate_sharpe_ratio(returns, risk_free_rate))
 
-def test_calculate_sharpe_ratio_high_risk_free_rate():
-    returns = pd.Series([0.10, 0.15, 0.20, 0.12, 0.08])
-    risk_free_rate = 0.25
+def test_calculate_sharpe_ratio_negative_returns():
+    returns = pd.Series([-0.1, -0.2, -0.3, -0.4, -0.5])
+    risk_free_rate = 0.02
     expected_sharpe_ratio = (returns.mean() - risk_free_rate) / returns.std()
-    calculated_sharpe_ratio = calculate_sharpe_ratio(returns, risk_free_rate)
-    assert np.isclose(calculated_sharpe_ratio, expected_sharpe_ratio)
+    assert np.isclose(calculate_sharpe_ratio(returns, risk_free_rate), expected_sharpe_ratio)
+
+def test_calculate_sharpe_ratio_large_returns():
+    returns = pd.Series([1.0, 2.0, -1.0, 0.5, 1.5])
+    risk_free_rate = 0.02
+    expected_sharpe_ratio = (returns.mean() - risk_free_rate) / returns.std()
+    assert np.isclose(calculate_sharpe_ratio(returns, risk_free_rate), expected_sharpe_ratio)
+
+def test_calculate_sharpe_ratio_small_returns():
+    returns = pd.Series([0.001, 0.002, -0.001, 0.0005, 0.0015])
+    risk_free_rate = 0.0002
+    expected_sharpe_ratio = (returns.mean() - risk_free_rate) / returns.std()
+    assert np.isclose(calculate_sharpe_ratio(returns, risk_free_rate), expected_sharpe_ratio)
+
+def test_calculate_sharpe_ratio_mixed_positive_negative():
+    returns = pd.Series([0.1, -0.2, 0.3, -0.4, 0.5])
+    risk_free_rate = 0.02
+    expected_sharpe_ratio = (returns.mean() - risk_free_rate) / returns.std()
+    assert np.isclose(calculate_sharpe_ratio(returns, risk_free_rate), expected_sharpe_ratio)
 
 def test_calculate_sharpe_ratio_zero_risk_free_rate():
-    returns = pd.Series([0.10, 0.15, 0.20, 0.12, 0.08])
+    returns = pd.Series([0.1, 0.2, -0.1, 0.05, 0.15])
     risk_free_rate = 0.0
+    expected_sharpe_ratio = returns.mean() / returns.std()
+    assert np.isclose(calculate_sharpe_ratio(returns, risk_free_rate), expected_sharpe_ratio)
+
+def test_calculate_sharpe_ratio_negative_risk_free_rate():
+    returns = pd.Series([0.1, 0.2, -0.1, 0.05, 0.15])
+    risk_free_rate = -0.02
     expected_sharpe_ratio = (returns.mean() - risk_free_rate) / returns.std()
-    calculated_sharpe_ratio = calculate_sharpe_ratio(returns, risk_free_rate)
-    assert np.isclose(calculated_sharpe_ratio, expected_sharpe_ratio)
+    assert np.isclose(calculate_sharpe_ratio(returns, risk_free_rate), expected_sharpe_ratio)
 
-def test_calculate_sharpe_ratio_series_with_one_value():
-    returns = pd.Series([0.10])
-    risk_free_rate = 0.05
-    expected_sharpe_ratio = (returns.mean() - risk_free_rate) / returns.std() if returns.std() > 0 else 0.0 #handle the case if standard dev is 0
-    calculated_sharpe_ratio = calculate_sharpe_ratio(returns, risk_free_rate)
-
-    if np.isnan(expected_sharpe_ratio):
-        assert np.isnan(calculated_sharpe_ratio)
-    else:
-        assert np.isclose(calculated_sharpe_ratio, expected_sharpe_ratio)
-
-
-def test_calculate_sharpe_ratio_empty_series():
+def test_calculate_sharpe_ratio_empty_returns():
     returns = pd.Series([])
-    risk_free_rate = 0.05
-    with pytest.raises(Exception): # Check for appropriate exception, e.g., ValueError or TypeError based on implementation
+    risk_free_rate = 0.02
+    with pytest.raises(ValueError):
         calculate_sharpe_ratio(returns, risk_free_rate)
 
-def test_calculate_sharpe_ratio_risk_free_rate_as_string():
-    returns = pd.Series([0.10, 0.15, 0.20, 0.12, 0.08])
-    risk_free_rate = "0.05"
+def test_calculate_sharpe_ratio_invalid_returns_type():
+    returns = [0.1, 0.2, -0.1, 0.05, 0.15]
+    risk_free_rate = 0.02
+    with pytest.raises(AttributeError):
+        calculate_sharpe_ratio(returns, risk_free_rate)
+
+def test_calculate_sharpe_ratio_invalid_risk_free_rate_type():
+    returns = pd.Series([0.1, 0.2, -0.1, 0.05, 0.15])
+    risk_free_rate = "0.02"
     with pytest.raises(TypeError):
         calculate_sharpe_ratio(returns, risk_free_rate)
 
-def test_calculate_sharpe_ratio_returns_as_list():
-    returns = [0.10, 0.15, 0.20, 0.12, 0.08]
-    risk_free_rate = 0.05
-    with pytest.raises(Exception):
-        calculate_sharpe_ratio(returns, risk_free_rate)
-
 def test_calculate_sharpe_ratio_returns_with_nan():
-    returns = pd.Series([0.10, 0.15, np.nan, 0.12, 0.08])
-    risk_free_rate = 0.05
+    returns = pd.Series([0.1, 0.2, np.nan, 0.05, 0.15])
+    risk_free_rate = 0.02
+    returns = returns.dropna()
     expected_sharpe_ratio = (returns.mean() - risk_free_rate) / returns.std()
+    assert np.isclose(calculate_sharpe_ratio(returns, risk_free_rate), expected_sharpe_ratio)
 
-    calculated_sharpe_ratio = calculate_sharpe_ratio(returns, risk_free_rate)
-
-    assert np.isnan(calculated_sharpe_ratio)
-"""
+def test_calculate_sharpe_ratio_returns_with_inf():
+    returns = pd.Series([0.1, 0.2, np.inf, 0.05, 0.15])
+    risk_free_rate = 0.02
+    returns = returns[~np.isinf(returns)]
+    expected_sharpe_ratio = (returns.mean() - risk_free_rate) / returns.std()
+    assert np.isclose(calculate_sharpe_ratio(returns, risk_free_rate), expected_sharpe_ratio)
+```
