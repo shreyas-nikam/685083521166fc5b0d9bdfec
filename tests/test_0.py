@@ -1,92 +1,53 @@
-
 import pytest
+from definition_173b2fe2462d498f812798d5d1ffb289 import load_data
 import pandas as pd
-from definition_4718a78c0712441291f35be0dd1830ac import load_data
 
 def test_load_data_returns_dataframe():
-    """
-    Test that load_data() returns a Pandas DataFrame.
-    """
-    df = load_data()
-    assert isinstance(df, pd.DataFrame)
+    """Test that the function returns a Pandas DataFrame."""
+    result = load_data()
+    assert isinstance(result, pd.DataFrame), "The function should return a Pandas DataFrame."
 
-def test_load_data_dataframe_not_empty():
-    """
-    Test that the returned DataFrame is not empty.
-    """
-    df = load_data()
-    assert not df.empty
-
-def test_load_data_expected_columns():
-    """
-    Test that the DataFrame contains the expected columns.
-    """
-    expected_columns = [
-        "asset_class",
-        "signal_type",
-        "return",
-        "volatility",
-        "sharpe_ratio",
-        "own_asset_predictability",
-        "cross_asset_predictability",
-        "signal_correlation",
-        "signal_mean_imbalance",
-        "signal_variance_imbalance",
-        "unexplained_effect",
-    ]
-    df = load_data()
-    assert all(col in df.columns for col in expected_columns)
+def test_load_data_not_empty():
+    """Test that the DataFrame returned is not empty."""
+    result = load_data()
+    assert not result.empty, "The DataFrame should not be empty."
 
 def test_load_data_column_types():
-    """
-    Test that the columns have the expected data types.
-    This test checks that the columns such as 'return','volatility','sharpe_ratio',
-    'own_asset_predictability', 'cross_asset_predictability', 'signal_correlation',
-    'signal_mean_imbalance', 'signal_variance_imbalance', and 'unexplained_effect'
-    have a numeric data type.
-    """
-    df = load_data()
-    numeric_columns = [
-        "return",
-        "volatility",
-        "sharpe_ratio",
-        "own_asset_predictability",
-        "cross_asset_predictability",
-        "signal_correlation",
-        "signal_mean_imbalance",
-        "signal_variance_imbalance",
-        "unexplained_effect",
-    ]
-    for col in numeric_columns:
-        assert pd.api.types.is_numeric_dtype(df[col]), f"Column '{col}' should be numeric"
+    """Test that the columns have correct data types."""
+    result = load_data()
+    # Replace with your expected column names and types
+    expected_columns = {
+        'feature1': 'int64', # Example: Assuming 'feature1' column should be int64
+        'feature2': 'float64', # Example: Assuming 'feature2' column should be float64
+        'target': 'int64' # Example: Assuming 'target' column should be int64
+    }
 
-def test_load_data_asset_class_values():
-    """
-    Test that the 'asset_class' column contains valid values.
-    """
-    df = load_data()
-    valid_asset_classes = ["equities", "bonds", "currencies", "commodities"]
-    assert all(asset_class in valid_asset_classes for asset_class in df["asset_class"].unique())
+    for col, dtype in expected_columns.items():
+        assert col in result.columns, f"Column '{col}' is missing from the DataFrame."
+        assert result[col].dtype == dtype, f"Column '{col}' should have dtype '{dtype}', but has '{result[col].dtype}'."
 
-def test_load_data_signal_type_values():
-    """
-    Test that the 'signal_type' column contains valid values.
-    """
-    df = load_data()
-    valid_signal_types = ["value", "momentum", "carry"]
-    assert all(signal_type in valid_signal_types for signal_type in df["signal_type"].unique())
+def test_load_data_row_count():
+    """Test that the DataFrame has a reasonable number of rows (e.g., > 10)."""
+    result = load_data()
+    assert len(result) > 10, "The DataFrame should have a reasonable number of rows."
 
-def test_load_data_no_null_values_in_critical_columns():
-    """
-    Test that critical columns do not contain null values.
-    """
-    df = load_data()
-    critical_columns = [
-        "asset_class",
-        "signal_type",
-        "return",
-        "volatility",
-        "sharpe_ratio"
-    ]
-    for col in critical_columns:
-        assert df[col].isnull().sum() == 0, f"Column '{col}' contains null values"
+def test_load_data_column_names():
+    """Test if the DataFrame has specific expected columns."""
+    result = load_data()
+    expected_columns = ['feature1', 'feature2', 'target'] # Replace with your expected column names
+    for col in expected_columns:
+        assert col in result.columns, f"Expected column '{col}' is missing."
+
+def test_load_data_contains_no_null_values():
+    """Test that the DataFrame does not contain any null values (NaN)."""
+    result = load_data()
+    assert result.isnull().sum().sum() == 0, "The DataFrame should not contain any null values."
+
+def test_load_data_handles_errors():
+     """Test that load_data handles potential file reading errors gracefully."""
+     # This assumes your load_data might involve reading from a file.
+     # Adjust the error handling check based on how your function handles errors.
+     try:
+         load_data()
+     except Exception as e:
+         assert False, f"load_data raised an exception: {e}"
