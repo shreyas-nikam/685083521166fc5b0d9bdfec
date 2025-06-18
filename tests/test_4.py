@@ -1,95 +1,101 @@
-
 import pytest
 import pandas as pd
 import plotly.graph_objects as go
-from definition_de5717947d5044b482040c2d12225094 import generate_bar_chart
+from definition_3a06065f4d89461080d8772a81ba4d78 import generate_bar_chart
 
-@pytest.fixture
-def sample_data():
-    """Creates a sample Pandas DataFrame for testing."""
-    data = {
-        'Key Driver': ['Own-asset predictability', 'Cross-asset predictability', 'Signal Correlation', 'Signal mean imbalance', 'Signal variance imbalance', 'Unexplained Effect'],
-        'Contribution': [0.2, 0.3, 0.1, -0.05, 0.15, 0.2]
-    }
-    return pd.DataFrame(data)
-
-def test_generate_bar_chart_valid_data(sample_data):
-    """Tests the function with valid DataFrame input."""
-    fig = generate_bar_chart(sample_data)
-    assert isinstance(fig, go.Figure)
-    assert fig.data[0]['type'] == 'bar'
-    assert len(fig.data[0]['x']) == len(sample_data)
-    assert len(fig.data[0]['y']) == len(sample_data)
-    assert fig.layout.title.text == 'Contribution of Key Drivers to Pair Portfolio Return'
-    assert fig.layout.xaxis.title.text == 'Key Driver'
-    assert fig.layout.yaxis.title.text == 'Contribution to Return'
 
 def test_generate_bar_chart_empty_dataframe():
-    """Tests the function with an empty DataFrame."""
+    """Test with an empty DataFrame."""
     empty_df = pd.DataFrame()
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as excinfo:
         generate_bar_chart(empty_df)
+    assert "Input DataFrame is empty." in str(excinfo.value)
+
 
 def test_generate_bar_chart_missing_columns():
-    """Tests the function with a DataFrame missing required columns."""
-    data = {'Irrelevant Column': [1, 2, 3]}
-    df = pd.DataFrame(data)
-    with pytest.raises(KeyError):
-        generate_bar_chart(df)
+    """Test with a DataFrame missing required columns."""
+    missing_cols_df = pd.DataFrame({'Driver': ['A', 'B'], 'Contribution': [0.1, 0.2]})
+    with pytest.raises(KeyError) as excinfo:
+        generate_bar_chart(missing_cols_df)
+    assert "Missing required column: Pair" in str(excinfo.value)
 
-def test_generate_bar_chart_non_numeric_contributions():
-    """Tests the function with a DataFrame containing non-numeric values in the contribution column."""
-    data = {
-        'Key Driver': ['Own-asset predictability'],
-        'Contribution': ['invalid']
-    }
-    df = pd.DataFrame(data)
-    with pytest.raises(TypeError):
-        generate_bar_chart(df)
 
-def test_generate_bar_chart_all_zero_contributions(sample_data):
-    """Tests the function with a DataFrame where all contribution values are zero."""
-    sample_data['Contribution'] = 0
-    fig = generate_bar_chart(sample_data)
+def test_generate_bar_chart_non_numeric_contribution():
+    """Test with a DataFrame having non-numeric 'Contribution' values."""
+    non_numeric_df = pd.DataFrame({'Pair': ['X', 'Y'], 'Driver': ['A', 'B'], 'Contribution': ['0.1', '0.2']})
+    with pytest.raises(TypeError) as excinfo:
+        generate_bar_chart(non_numeric_df)
+    assert "Contribution column must be numeric." in str(excinfo.value)
+
+def test_generate_bar_chart_valid_data():
+    """Test with a valid DataFrame."""
+    valid_df = pd.DataFrame({
+        'Pair': ['Pair1', 'Pair1', 'Pair2', 'Pair2'],
+        'Driver': ['DriverA', 'DriverB', 'DriverC', 'DriverD'],
+        'Contribution': [0.1, 0.2, 0.3, 0.4]
+    })
+    fig = generate_bar_chart(valid_df)
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) > 0
+    assert fig.layout.barmode == 'group'
+    assert fig.layout.title.text == 'Contribution of Each Driver to Pair Portfolio Return'
+    assert fig.layout.xaxis.title.text == 'Driver'
+    assert fig.layout.yaxis.title.text == 'Contribution'
+
+
+def test_generate_bar_chart_single_pair():
+    """Test with a DataFrame containing data for only one pair."""
+    single_pair_df = pd.DataFrame({
+        'Pair': ['Pair1', 'Pair1'],
+        'Driver': ['DriverA', 'DriverB'],
+        'Contribution': [0.1, 0.2]
+    })
+    fig = generate_bar_chart(single_pair_df)
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) > 0
+    assert fig.layout.barmode == 'group'
+    assert fig.layout.title.text == 'Contribution of Each Driver to Pair Portfolio Return'
+    assert fig.layout.xaxis.title.text == 'Driver'
+    assert fig.layout.yaxis.title.text == 'Contribution'
+
+
+def test_generate_bar_chart_negative_contributions():
+     """Test with negative contribution values"""
+     negative_contribution_df = pd.DataFrame({
+        'Pair': ['Pair1', 'Pair1', 'Pair2', 'Pair2'],
+        'Driver': ['DriverA', 'DriverB', 'DriverC', 'DriverD'],
+        'Contribution': [-0.1, 0.2, -0.3, 0.4]
+    })
+     fig = generate_bar_chart(negative_contribution_df)
+     assert isinstance(fig, go.Figure)
+
+def test_generate_bar_chart_zero_contributions():
+     """Test with zero contribution values"""
+     zero_contribution_df = pd.DataFrame({
+        'Pair': ['Pair1', 'Pair1', 'Pair2', 'Pair2'],
+        'Driver': ['DriverA', 'DriverB', 'DriverC', 'DriverD'],
+        'Contribution': [0, 0, 0, 0]
+    })
+     fig = generate_bar_chart(zero_contribution_df)
+     assert isinstance(fig, go.Figure)
+
+def test_generate_bar_chart_large_numbers():
+    """Test with large numbers in contributions."""
+    large_numbers_df = pd.DataFrame({
+        'Pair': ['Pair1', 'Pair1', 'Pair2', 'Pair2'],
+        'Driver': ['DriverA', 'DriverB', 'DriverC', 'DriverD'],
+        'Contribution': [1000000, 2000000, 3000000, 4000000]
+    })
+    fig = generate_bar_chart(large_numbers_df)
     assert isinstance(fig, go.Figure)
 
-def test_generate_bar_chart_negative_contributions(sample_data):
-    """Tests the function with a DataFrame containing negative contributions."""
-    fig = generate_bar_chart(sample_data)
-    assert isinstance(fig, go.Figure)
+def test_generate_bar_chart_duplicate_driver_pair():
+    """Test with duplicate Driver/Pair combinations."""
+    duplicate_df = pd.DataFrame({
+        'Pair': ['Pair1', 'Pair1', 'Pair1', 'Pair2'],
+        'Driver': ['DriverA', 'DriverA', 'DriverB', 'DriverC'],
+        'Contribution': [0.1, 0.2, 0.3, 0.4]
+    })
 
-def test_generate_bar_chart_inf_contributions():
-    """Tests the function with a DataFrame containing infinite contribution values."""
-    data = {
-        'Key Driver': ['Own-asset predictability'],
-        'Contribution': [float('inf')]
-    }
-    df = pd.DataFrame(data)
-    with pytest.raises(ValueError):
-        generate_bar_chart(df)
-
-def test_generate_bar_chart_nan_contributions():
-    """Tests the function with a DataFrame containing NaN contribution values."""
-    data = {
-        'Key Driver': ['Own-asset predictability'],
-        'Contribution': [float('nan')]
-    }
-    df = pd.DataFrame(data)
-    with pytest.raises(ValueError):
-        generate_bar_chart(df)
-
-def test_generate_bar_chart_single_row():
-    """Tests the function with a DataFrame containing only a single row."""
-    data = {
-        'Key Driver': ['Own-asset predictability'],
-        'Contribution': [0.5]
-    }
-    df = pd.DataFrame(data)
-    fig = generate_bar_chart(df)
-    assert isinstance(fig, go.Figure)
-
-def test_generate_bar_chart_large_contribution_values(sample_data):
-    """Tests with large values in the 'Contribution' column."""
-    sample_data['Contribution'] = [1000000, 2000000, 3000000, 4000000, 5000000, 6000000]
-    fig = generate_bar_chart(sample_data)
+    fig = generate_bar_chart(duplicate_df)
     assert isinstance(fig, go.Figure)
